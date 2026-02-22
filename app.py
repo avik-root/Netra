@@ -642,6 +642,8 @@ def api_logs():
 def api_connections():
     """Get detailed active network connections."""
     connections = []
+    
+    # Try psutil first (requires root on macOS)
     try:
         for conn in psutil.net_connections(kind="all"):
             conn_info = {
@@ -653,7 +655,6 @@ def api_connections():
                 "status": conn.status if conn.status else "N/A",
                 "pid": conn.pid or "N/A"
             }
-            # Try to get process name
             if conn.pid:
                 try:
                     proc = psutil.Process(conn.pid)
@@ -662,10 +663,113 @@ def api_connections():
                     conn_info["process"] = "Unknown"
             else:
                 conn_info["process"] = "N/A"
-            
             connections.append(conn_info)
     except (psutil.AccessDenied, PermissionError):
         pass
+    
+    # Fallback: parse lsof on macOS / netstat on Linux if psutil returned nothing
+    if not connections:
+        try:
+            system = platform.system()
+            if system == "Darwin":
+                result = subprocess.run(
+                    ["lsof", "-i", "-n", "-P", "+c", "0"],
+                    capture_output=True, text=True, timeout=10
+                )
+                if result.stdout:
+                    lines = result.stdout.strip().split("\n")
+                    for line in lines[1:]:  # Skip header
+                        parts = line.split()
+                        if len(parts) < 9:
+                            continue
+                        proc_name = parts[0]
+                        pid = parts[1]
+                        
+                        # Parse protocol (TCP/UDP) and IP version
+                        proto_field = parts[7] if len(parts) > 7 else ""
+                        node_field = parts[7] if len(parts) > 7 else ""
+                        name_field = parts[8] if len(parts) > 8 else ""
+                        
+                        # Determine protocol
+                        proto = "TCP"
+                        if "UDP" in node_field.upper():
+                            proto = "UDP"
+                        
+                        # Determine IP family
+                        family = "IPv4"
+                        type_field = parts[4] if len(parts) > 4 else ""
+                        if "6" in type_field:
+                            family = "IPv6"
+                        
+                        # Parse addresses from the NAME column
+                        local_addr = "N/A"
+                        remote_addr = "N/A"
+                        status = "N/A"
+                        
+                        # Check for status in last field
+                        last_part = parts[-1] if parts else ""
+                        if last_part.startswith("(") and last_part.endswith(")"):
+                            status = last_part[1:-1]  # e.g., (ESTABLISHED) -> ESTABLISHED
+                            name_field = parts[-2] if len(parts) > 9 else name_field
+                        
+                        if "->" in name_field:
+                            addr_parts = name_field.split("->")
+                            local_addr = addr_parts[0].strip()
+                            remote_addr = addr_parts[1].strip()
+                        elif name_field and name_field != "*:*":
+                            local_addr = name_field
+                            if status == "N/A":
+                                status = "LISTEN"
+                        
+                        connections.append({
+                            "fd": -1,
+                            "family": family,
+                            "type": proto,
+                            "local_address": local_addr,
+                            "remote_address": remote_addr,
+                            "status": status,
+                            "pid": pid,
+                            "process": proc_name
+                        })
+            elif system == "Linux":
+                result = subprocess.run(
+                    ["ss", "-tunap"],
+                    capture_output=True, text=True, timeout=10
+                )
+                if result.stdout:
+                    lines = result.stdout.strip().split("\n")
+                    for line in lines[1:]:
+                        parts = line.split()
+                        if len(parts) < 5:
+                            continue
+                        proto = parts[0].upper()
+                        state = parts[1] if len(parts) > 1 else "N/A"
+                        local = parts[4] if len(parts) > 4 else "N/A"
+                        remote = parts[5] if len(parts) > 5 else "N/A"
+                        proc_info = parts[6] if len(parts) > 6 else ""
+                        
+                        pid_val = "N/A"
+                        proc_name = "N/A"
+                        if 'pid=' in proc_info:
+                            try:
+                                pid_val = proc_info.split('pid=')[1].split(',')[0]
+                                p = psutil.Process(int(pid_val))
+                                proc_name = p.name()
+                            except (Exception,):
+                                pass
+                        
+                        connections.append({
+                            "fd": -1,
+                            "family": "IPv6" if ']:' in local else "IPv4",
+                            "type": proto if proto in ("TCP", "UDP") else "TCP",
+                            "local_address": local,
+                            "remote_address": remote,
+                            "status": state,
+                            "pid": pid_val,
+                            "process": proc_name
+                        })
+        except (subprocess.SubprocessError, FileNotFoundError, Exception) as e:
+            print(f"[NETRA] Connection fallback error: {e}")
     
     # Summary
     tcp_count = sum(1 for c in connections if c["type"] == "TCP")
