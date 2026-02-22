@@ -969,6 +969,8 @@ def background_metrics():
                 "net_recv_total": curr_net.bytes_recv,
                 "packets_sent_rate": round(packets_sent_rate),
                 "packets_recv_rate": round(packets_recv_rate),
+                "packets_sent_total": curr_net.packets_sent,
+                "packets_recv_total": curr_net.packets_recv,
                 "temperatures": temps,
                 "battery": battery
             })
@@ -992,8 +994,8 @@ if __name__ == "__main__":
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║          NETRA – Network Event & Threat Response Analyst     ║
-║          Version: {APP_VERSION}                                       ║
-║          Developed by: {DEVELOPER}                                ║
+║          Version: {APP_VERSION}                                      ║
+║          Developed by: {DEVELOPER}                              ║
 ║          Starting on http://0.0.0.0:5001                     ║
 ║          Security: Rate Limiting | CSRF | Secure Headers     ║
 ╚══════════════════════════════════════════════════════════════╝

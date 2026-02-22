@@ -526,12 +526,36 @@ socket.on('system_metrics', (data) => {
     const netPercent = Math.min((data.net_recv_rate / (10 * 1024 * 1024)) * 100, 100);
     setBarWidth('stat-net-bar', netPercent);
 
-    // Update charts
+    // Update chart legend labels with live values
+    const sentRate = formatBytes(data.net_sent_rate) + '/s';
+    const recvRate = formatBytes(data.net_recv_rate) + '/s';
+    const pktSentRate = formatNumber(Math.round(data.packets_sent_rate));
+    const pktRecvRate = formatNumber(Math.round(data.packets_recv_rate));
+
+    // Overview — Network Throughput chart
+    if (netChart) {
+        netChart.data.datasets[0].label = `↑ Sent (${sentRate})`;
+        netChart.data.datasets[1].label = `↓ Received (${recvRate})`;
+        netChart.update('none');
+    }
+
+    // Network Monitor — Bandwidth chart
+    if (bandwidthChart) {
+        bandwidthChart.data.datasets[0].label = `↑ Upload (${sentRate})`;
+        bandwidthChart.data.datasets[1].label = `↓ Download (${recvRate})`;
+        bandwidthChart.update('none');
+    }
+
+    // Firewall — Packet Flow chart
+    if (packetChart) {
+        packetChart.data.datasets[0].label = `Packets Out (${pktSentRate}/s)`;
+        packetChart.data.datasets[1].label = `Packets In (${pktRecvRate}/s)`;
+        packetChart.update('none');
+    }
+
+    // Update remaining charts
     if (cpuChart) cpuChart.update('none');
     if (memChart) memChart.update('none');
-    if (netChart) netChart.update('none');
-    if (bandwidthChart) bandwidthChart.update('none');
-    if (packetChart) packetChart.update('none');
 
     // Disk chart
     if (diskChart) {
@@ -576,6 +600,8 @@ socket.on('system_metrics', (data) => {
     // Network panel stats
     updateEl('net-total-sent', formatBytes(data.net_sent_total));
     updateEl('net-total-recv', formatBytes(data.net_recv_total));
+    if (data.packets_sent_total) updateEl('net-packets-sent', formatNumber(data.packets_sent_total));
+    if (data.packets_recv_total) updateEl('net-packets-recv', formatNumber(data.packets_recv_total));
 });
 
 function updateEl(id, val) {
