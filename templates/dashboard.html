@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NETRA – Dashboard</title>
+    <meta name="description"
+        content="NETRA – Network Event & Threat Response Analyst. Real-time cybersecurity monitoring dashboard.">
+    <link rel="icon" type="image/png" href="/static/img/favicon.png">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-grid"></div>
+    <div class="scanline"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="/static/img/logo.png" alt="NETRA" class="sidebar-logo">
+            <div class="sidebar-brand">
+                <h1>NETRA</h1>
+                <span>v{{ version }}</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-panel="overview">
+                <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
+                <span class="nav-text">Overview</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="network">
+                <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
+                <span class="nav-text">Network Monitor</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="firewall">
+                <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
+                <span class="nav-text">Firewall & Packets</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="services">
+                <span class="nav-icon"><i class="fa-solid fa-gears"></i></span>
+                <span class="nav-text">Services</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="resources">
+                <span class="nav-icon"><i class="fa-solid fa-desktop"></i></span>
+                <span class="nav-text">System Resources</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="connections">
+                <span class="nav-icon"><i class="fa-solid fa-plug"></i></span>
+                <span class="nav-text">Connections</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="logs">
+                <span class="nav-icon"><i class="fa-solid fa-scroll"></i></span>
+                <span class="nav-text">Logs</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="settings">
+                <span class="nav-icon"><i class="fa-solid fa-sliders"></i></span>
+                <span class="nav-text">Settings</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-badge">
+                <div class="user-avatar">{{ username[0]|upper }}</div>
+                <div class="user-info">
+                    <span class="user-name">{{ username }}</span>
+                    <span class="user-role">Administrator</span>
+                </div>
+            </div>
+            <a href="/logout" class="btn-logout" title="Logout"><i class="fa-solid fa-power-off"></i></a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <button class="menu-toggle" id="menuToggle"><i class="fa-solid fa-bars"></i></button>
+            <div class="top-bar-info">
+                <span class="hostname"><i class="fa-solid fa-server"></i> {{ hostname }}</span>
+                <span class="os-badge">{{ os_info }}</span>
+            </div>
+            <div class="top-bar-right">
+                <div class="live-indicator">
+                    <span class="live-dot"></span>
+                    <span>LIVE</span>
+                </div>
+                <span class="clock" id="clock"></span>
+            </div>
+        </header>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- OVERVIEW PANEL -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <section class="panel active" id="panel-overview">
+            <div class="panel-header">
+                <h2>System Overview</h2>
+                <span class="panel-subtitle">Real-time system health monitoring</span>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="stats-grid">
+                <div class="stat-card stat-cpu">
+                    <div class="stat-icon"><i class="fa-solid fa-bolt"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">CPU Usage</span>
+                        <span class="stat-value" id="stat-cpu">0%</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill" id="stat-cpu-bar"></div>
+                    </div>
+                </div>
+                <div class="stat-card stat-ram">
+                    <div class="stat-icon"><i class="fa-solid fa-memory"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Memory</span>
+                        <span class="stat-value" id="stat-ram">0%</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill" id="stat-ram-bar"></div>
+                    </div>
+                </div>
+                <div class="stat-card stat-disk">
+                    <div class="stat-icon"><i class="fa-solid fa-hard-drive"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Disk</span>
+                        <span class="stat-value" id="stat-disk">0%</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill" id="stat-disk-bar"></div>
+                    </div>
+                </div>
+                <div class="stat-card stat-net">
+                    <div class="stat-icon"><i class="fa-solid fa-satellite-dish"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Network</span>
+                        <span class="stat-value" id="stat-net">0 B/s</span>
+                    </div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill" id="stat-net-bar" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>CPU Usage History</h3>
+                        <span class="chart-badge">60s</span>
+                    </div>
+                    <div class="chart-body"><canvas id="cpuChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Memory Usage History</h3>
+                        <span class="chart-badge">60s</span>
+                    </div>
+                    <div class="chart-body"><canvas id="memChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Network Throughput</h3>
+                        <span class="chart-badge">LIVE</span>
+                    </div>
+                    <div class="chart-body"><canvas id="netChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Disk Space</h3>
+                        <span class="chart-badge">CURRENT</span>
+                    </div>
+                    <div class="chart-body chart-body-doughnut"><canvas id="diskChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- System Info Table -->
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3>System Information</h3>
+                </div>
+                <div class="info-grid" id="systemInfoGrid">
+                    <div class="info-item"><span class="info-label">Hostname</span><span class="info-value"
+                            id="info-hostname">–</span></div>
+                    <div class="info-item"><span class="info-label">OS</span><span class="info-value"
+                            id="info-os">–</span></div>
+                    <div class="info-item"><span class="info-label">Architecture</span><span class="info-value"
+                            id="info-arch">–</span></div>
+                    <div class="info-item"><span class="info-label">CPU Cores</span><span class="info-value"
+                            id="info-cores">–</span></div>
+                    <div class="info-item"><span class="info-label">CPU Frequency</span><span class="info-value"
+                            id="info-freq">–</span></div>
+                    <div class="info-item"><span class="info-label">Uptime</span><span class="info-value"
+                            id="info-uptime">–</span></div>
+                    <div class="info-item"><span class="info-label">Boot Time</span><span class="info-value"
+                            id="info-boot">–</span></div>
+                    <div class="info-item"><span class="info-label">Python</span><span class="info-value"
+                            id="info-python">–</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- NETWORK PANEL -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <section class="panel" id="panel-network">
+            <div class="panel-header">
+                <h2>Network Monitor</h2>
+                <span class="panel-subtitle">WiFi, Ethernet, Bluetooth & all network interfaces</span>
+            </div>
+
+            <!-- Network Stats -->
+            <div class="stats-grid">
+                <div class="stat-card stat-cpu">
+                    <div class="stat-icon"><i class="fa-solid fa-upload"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total Sent</span>
+                        <span class="stat-value" id="net-total-sent">0 B</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-ram">
+                    <div class="stat-icon"><i class="fa-solid fa-download"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total Received</span>
+                        <span class="stat-value" id="net-total-recv">0 B</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-disk">
+                    <div class="stat-icon"><i class="fa-solid fa-box"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Packets Sent</span>
+                        <span class="stat-value" id="net-packets-sent">0</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-net">
+                    <div class="stat-icon"><i class="fa-solid fa-inbox"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Packets Received</span>
+                        <span class="stat-value" id="net-packets-recv">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bandwidth Chart -->
+            <div class="charts-grid">
+                <div class="chart-card full-width">
+                    <div class="chart-header">
+                        <h3>Bandwidth Monitor</h3>
+                        <span class="chart-badge">LIVE</span>
+                    </div>
+                    <div class="chart-body"><canvas id="bandwidthChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Network Interfaces -->
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3>Network Interfaces</h3>
+                    <button class="btn-refresh" onclick="loadNetworkData()"><i class="fa-solid fa-rotate-right"></i>
+                        Refresh</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table" id="interfacesTable">
+                        <thead>
+                            <tr>
+                                <th>Interface</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>IP Address</th>
+                                <th>MAC</th>
+                                <th>Speed</th>
+                                <th>Sent</th>
+                                <th>Received</th>
+                            </tr>
+                        </thead>
+                        <tbody id="interfacesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- FIREWALL PANEL -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <section class="panel" id="panel-firewall">
+            <div class="panel-header">
+                <h2>Firewall & Packets</h2>
+                <span class="panel-subtitle">Firewall rules, incoming/outgoing packet analysis</span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card stat-cpu">
+                    <div class="stat-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Firewall Status</span>
+                        <span class="stat-value" id="fw-status">–</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-ram">
+                    <div class="stat-icon"><i class="fa-solid fa-upload"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Packets Out</span>
+                        <span class="stat-value" id="fw-packets-out">0</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-disk">
+                    <div class="stat-icon"><i class="fa-solid fa-download"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Packets In</span>
+                        <span class="stat-value" id="fw-packets-in">0</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-net">
+                    <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Errors / Drops</span>
+                        <span class="stat-value" id="fw-errors">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Packet Flow</h3>
+                        <span class="chart-badge">LIVE</span>
+                    </div>
+                    <div class="chart-body"><canvas id="packetChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Traffic Distribution</h3>
+                        <span class="chart-badge">CURRENT</span>
+                    </div>
+                    <div class="chart-body chart-body-doughnut"><canvas id="trafficDistChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Firewall Rules -->
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3>Firewall Rules</h3>
+                    <button class="btn-refresh" onclick="loadFirewallData()"><i class="fa-solid fa-rotate-right"></i>
+                        Refresh</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table" id="firewallTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Type</th>
+                                <th>Rule</th>
+                            </tr>
+                        </thead>
+                        <tbody id="firewallBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- SERVICES PANEL -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <section class="panel" id="panel-services">
+            <div class="panel-header">
+                <h2>Running Services</h2>
+                <span class="panel-subtitle">Active processes and system services</span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card stat-cpu">
+                    <div class="stat-icon"><i class="fa-solid fa-gears"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total Processes</span>
+                        <span class="stat-value" id="srv-total">0</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-ram">
+                    <div class="stat-icon"><i class="fa-solid fa-circle-play"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Running</span>
+                        <span class="stat-value" id="srv-running">0</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-disk">
+                    <div class="stat-icon"><i class="fa-solid fa-moon"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Sleeping</span>
+                        <span class="stat-value" id="srv-sleeping">0</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-net">
+                    <div class="stat-icon"><i class="fa-solid fa-ghost"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Zombie</span>
+                        <span class="stat-value" id="srv-zombie">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Top CPU Consumers</h3>
+                    </div>
+                    <div class="chart-body"><canvas id="topCpuChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Top Memory Consumers</h3>
+                    </div>
+                    <div class="chart-body"><canvas id="topMemChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Services Table -->
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3>Process List</h3>
+                    <div class="table-controls">
+                        <input type="text" id="serviceSearch" placeholder="Search services..." class="search-input">
+                        <button class="btn-refresh" onclick="loadServicesData()"><i
+                                class="fa-solid fa-rotate-right"></i> Refresh</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table" id="servicesTable">
+                        <thead>
+                            <tr>
+                                <th>PID</th>
+                                <th>Name</th>
+                                <th>Status</th>
+                                <th>CPU %</th>
+                                <th>MEM %</th>
+                                <th>User</th>
+                                <th>Started</th>
+                            </tr>
+                        </thead>
+                        <tbody id="servicesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- RESOURCES PANEL -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <section class="panel" id="panel-resources">
+            <div class="panel-header">
+                <h2>System Resources</h2>
+                <span class="panel-subtitle">Detailed CPU, RAM, Swap & Disk analysis</span>
+            </div>
+
+            <!-- CPU Per Core -->
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3>CPU Per Core Usage</h3>
+                </div>
+                <div class="chart-body"><canvas id="cpuCoreChart"></canvas></div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Memory Breakdown</h3>
+                    </div>
+                    <div class="chart-body chart-body-doughnut"><canvas id="memBreakdownChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Swap Usage</h3>
+                    </div>
+                    <div class="chart-body chart-body-doughnut"><canvas id="swapChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Disk Partitions -->
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3>Storage Partitions</h3>
+                    <button class="btn-refresh" onclick="loadSystemData()"><i class="fa-solid fa-rotate-right"></i>
+                        Refresh</button>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table" id="partitionsTable">
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Mount</th>
+                                <th>FS Type</th>
+                                <th>Total</th>
+                                <th>Used</th>
+                                <th>Free</th>
+                                <th>Usage</th>
+                            </tr>
+                        </thead>
+                        <tbody id="partitionsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Battery Info (if available) -->
+            <div class="info-card" id="batteryCard" style="display:none">
+                <div class="chart-header">
+                    <h3>Battery Information</h3>
+                </div>
+                <div class="info-grid" id="batteryGrid">
+                    <div class="info-item"><span class="info-label">Charge</span><span class="info-value"
+                            id="battery-percent">–</span></div>
+                    <div class="info-item"><span class="info-label">Status</span><span class="info-value"
+                            id="battery-status">–</span></div>
+                    <div class="info-item"><span class="info-label">Time Left</span><span class="info-value"
+                            id="battery-time">–</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- CONNECTIONS PANEL -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <section class="panel" id="panel-connections">
+            <div class="panel-header">
+                <h2>Active Connections</h2>
+                <span class="panel-subtitle">TCP/UDP connections, listening ports</span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card stat-cpu">
+                    <div class="stat-icon"><i class="fa-solid fa-plug"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total</span>
+                        <span class="stat-value" id="conn-total">0</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-ram">
+                    <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Established</span>
+                        <span class="stat-value" id="conn-established">0</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-disk">
+                    <div class="stat-icon"><i class="fa-solid fa-headphones"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Listening</span>
+                        <span class="stat-value" id="conn-listening">0</span>
+                    </div>
+                </div>
+                <div class="stat-card stat-net">
+                    <div class="stat-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">TCP / UDP</span>
+                        <span class="stat-value" id="conn-protocol">0 / 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Connection Types</h3>
+                    </div>
+                    <div class="chart-body chart-body-doughnut"><canvas id="connTypeChart"></canvas></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Connection Status</h3>
+                    </div>
+                    <div class="chart-body chart-body-doughnut"><canvas id="connStatusChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3>Connection Details</h3>
+                    <div class="table-controls">
+                        <input type="text" id="connSearch" placeholder="Filter connections..." class="search-input">
+                        <button class="btn-refresh" onclick="loadConnectionsData()"><i
+                                class="fa-solid fa-rotate-right"></i> Refresh</button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Protocol</th>
+                                <th>Local Address</th>
+                                <th>Remote Address</th>
+                                <th>Status</th>
+                                <th>PID</th>
+                                <th>Process</th>
+                            </tr>
+                        </thead>
+                        <tbody id="connectionsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- LOGS PANEL -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <section class="panel" id="panel-logs">
+            <div class="panel-header">
+                <h2>System Logs</h2>
+                <span class="panel-subtitle">Real-time security & system event logs</span>
+            </div>
+
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3>Log Stream</h3>
+                    <div class="table-controls">
+                        <input type="text" id="logSearch" placeholder="Filter logs..." class="search-input">
+                        <label class="auto-scroll-label">
+                            <input type="checkbox" id="autoScroll" checked> Auto-scroll
+                        </label>
+                        <button class="btn-refresh" onclick="loadLogsData()"><i class="fa-solid fa-rotate-right"></i>
+                            Refresh</button>
+                    </div>
+                </div>
+                <div class="log-container" id="logContainer">
+                    <div class="log-loading">Loading system logs...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- SETTINGS PANEL -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <section class="panel" id="panel-settings">
+            <div class="panel-header">
+                <h2>Settings</h2>
+                <span class="panel-subtitle">Tool information, admin settings & update management</span>
+            </div>
+
+            <!-- About Section -->
+            <div class="info-card about-card">
+                <div class="about-header">
+                    <img src="/static/img/logo.png" alt="NETRA" class="about-logo">
+                    <div>
+                        <h3 class="about-title">NETRA</h3>
+                        <p class="about-subtitle">Network Event & Threat Response Analyst</p>
+                    </div>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item"><span class="info-label">Version</span><span class="info-value">{{ version
+                            }}</span></div>
+                    <div class="info-item"><span class="info-label">Developer</span><span class="info-value"
+                            style="color:var(--cyan)">{{ developer }}</span></div>
+                    <div class="info-item"><span class="info-label">Admin</span><span class="info-value">{{ username
+                            }}</span></div>
+                    <div class="info-item"><span class="info-label">License</span><span class="info-value">MIT</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Settings  -->
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3><i class="fa-solid fa-user-shield"></i> Admin Settings</h3>
+                </div>
+                <div class="admin-settings-form">
+                    <div class="form-group">
+                        <label class="form-label">Current Password</label>
+                        <div class="password-input-wrap">
+                            <input type="password" id="currentPassword" placeholder="Enter current password"
+                                class="form-input" autocomplete="off">
+                            <button type="button" class="password-toggle"
+                                onclick="togglePasswordVisibility('currentPassword', this)">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">New Password</label>
+                        <div class="password-input-wrap">
+                            <input type="password" id="newPassword" placeholder="Enter new password" class="form-input"
+                                autocomplete="off">
+                            <button type="button" class="password-toggle"
+                                onclick="togglePasswordVisibility('newPassword', this)">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm New Password</label>
+                        <div class="password-input-wrap">
+                            <input type="password" id="confirmPassword" placeholder="Re-enter new password"
+                                class="form-input" autocomplete="off">
+                            <button type="button" class="password-toggle"
+                                onclick="togglePasswordVisibility('confirmPassword', this)">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="password-requirements">
+                        <span class="req-title"><i class="fa-solid fa-lock"></i> Password Requirements:</span>
+                        <ul>
+                            <li>Minimum 8 characters</li>
+                            <li>At least 1 uppercase letter (A-Z)</li>
+                            <li>At least 1 lowercase letter (a-z)</li>
+                            <li>At least 1 digit (0-9)</li>
+                            <li>At least 1 special character (!@#$%...)</li>
+                        </ul>
+                    </div>
+                    <button class="btn-update" id="btnChangePassword" onclick="changePassword()">
+                        <i class="fa-solid fa-key"></i>
+                        <span>Change Password</span>
+                    </button>
+                    <div class="form-feedback" id="passwordFeedback" style="display:none"></div>
+                </div>
+            </div>
+
+            <!-- Update Section -->
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3><i class="fa-solid fa-arrows-rotate"></i> Auto Update</h3>
+                </div>
+                <p class="update-desc">Fetch latest changes from the Git repository. Admin credentials will be preserved
+                    during the update.</p>
+                <div class="update-controls">
+                    <button class="btn-update" id="btnUpdate" onclick="triggerUpdate()">
+                        <span class="update-icon"><i class="fa-solid fa-rocket"></i></span>
+                        <span>Check & Update</span>
+                    </button>
+                </div>
+                <div class="update-output" id="updateOutput" style="display:none">
+                    <pre id="updateLog"></pre>
+                </div>
+            </div>
+
+            <!-- Security Info -->
+            <div class="info-card">
+                <div class="chart-header">
+                    <h3><i class="fa-solid fa-lock"></i> Security Information</h3>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item"><span class="info-label">Encryption</span><span class="info-value">Fernet
+                            (AES-128-CBC)</span></div>
+                    <div class="info-item"><span class="info-label">Credential Storage</span><span
+                            class="info-value">Encrypted JSON</span></div>
+                    <div class="info-item"><span class="info-label">Session Duration</span><span class="info-value">8
+                            Hours</span></div>
+                    <div class="info-item"><span class="info-label">Transport</span><span class="info-value">WebSocket +
+                            HTTPS ready</span></div>
+                    <div class="info-item"><span class="info-label">CSRF Protection</span><span class="info-value"
+                            style="color:var(--green)">Active</span></div>
+                    <div class="info-item"><span class="info-label">Rate Limiting</span><span class="info-value"
+                            style="color:var(--green)">5 attempts / 15 min</span></div>
+                    <div class="info-item"><span class="info-label">Security Headers</span><span class="info-value"
+                            style="color:var(--green)">Enabled</span></div>
+                    <div class="info-item"><span class="info-label">Password Policy</span><span class="info-value"
+                            style="color:var(--green)">Strong (8+ chars)</span></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- CSRF Token for JS -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <script src="/static/js/main.js"></script>
+</body>
+
+</html>
