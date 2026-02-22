@@ -284,7 +284,7 @@ http://localhost:5001
 | Field | Value |
 |:---|:---|
 | Username | `netra` |
-| Password | `pass0000` |
+| Password | `Pass0000` |
 
 > ⚠️ **You will be prompted to set new credentials on first login.** The default password will no longer work after setup is complete.
 
