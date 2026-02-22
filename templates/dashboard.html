@@ -265,6 +265,55 @@
                 </div>
             </div>
 
+            <!-- Speed Test -->
+            <div class="info-card speedtest-card" id="speedtestCard">
+                <div class="chart-header">
+                    <h3><i class="fa-solid fa-gauge-high"></i> Network Speed Test</h3>
+                    <button class="btn-refresh speedtest-btn" id="btnSpeedtest" onclick="runSpeedTest()">
+                        <i class="fa-solid fa-rocket"></i> Run Speed Test
+                    </button>
+                </div>
+                <div class="speedtest-content">
+                    <div class="speedtest-metrics">
+                        <div class="speedtest-metric">
+                            <div class="speedtest-metric-icon download">
+                                <i class="fa-solid fa-arrow-down"></i>
+                            </div>
+                            <div class="speedtest-metric-value" id="st-download">—</div>
+                            <div class="speedtest-metric-unit">Mbps</div>
+                            <div class="speedtest-metric-label">Download</div>
+                        </div>
+                        <div class="speedtest-metric">
+                            <div class="speedtest-metric-icon upload">
+                                <i class="fa-solid fa-arrow-up"></i>
+                            </div>
+                            <div class="speedtest-metric-value" id="st-upload">—</div>
+                            <div class="speedtest-metric-unit">Mbps</div>
+                            <div class="speedtest-metric-label">Upload</div>
+                        </div>
+                        <div class="speedtest-metric">
+                            <div class="speedtest-metric-icon ping">
+                                <i class="fa-solid fa-signal"></i>
+                            </div>
+                            <div class="speedtest-metric-value" id="st-ping">—</div>
+                            <div class="speedtest-metric-unit">ms</div>
+                            <div class="speedtest-metric-label">Ping</div>
+                        </div>
+                    </div>
+                    <div class="speedtest-status" id="st-status">
+                        <span class="speedtest-server" id="st-server">
+                            <i class="fa-solid fa-server"></i> Server: Cloudflare (1.1.1.1)
+                        </span>
+                    </div>
+                    <div class="speedtest-progress" id="st-progress" style="display:none">
+                        <div class="speedtest-progress-bar">
+                            <div class="speedtest-progress-fill" id="st-progress-fill"></div>
+                        </div>
+                        <span class="speedtest-progress-text" id="st-progress-text">Initializing...</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Network Interfaces -->
             <div class="info-card">
                 <div class="chart-header">

@@ -978,6 +978,135 @@ async function triggerUpdate() {
     btn.disabled = false;
     btn.innerHTML = '<span class="update-icon"><i class="fa-solid fa-rocket"></i></span><span>Check & Update</span>';
 }
+// ─── Speed Test ─────────────────────────────────────────────
+let speedTestRunning = false;
+
+async function runSpeedTest() {
+    if (speedTestRunning) return;
+    speedTestRunning = true;
+
+    const btn = document.getElementById('btnSpeedtest');
+    const progress = document.getElementById('st-progress');
+    const progressFill = document.getElementById('st-progress-fill');
+    const progressText = document.getElementById('st-progress-text');
+
+    // Reset values
+    ['st-download', 'st-upload', 'st-ping'].forEach(id => updateEl(id, '—'));
+    document.querySelectorAll('.speedtest-metric').forEach(m => m.classList.remove('active'));
+
+    // Update button
+    btn.disabled = true;
+    btn.classList.add('running');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testing...';
+
+    // Show progress
+    progress.style.display = 'flex';
+    progressFill.style.width = '0%';
+    progressText.textContent = 'Measuring ping...';
+
+    // Animate progress bar through phases
+    const phases = [
+        { width: '15%', text: 'Measuring ping...', delay: 500 },
+        { width: '30%', text: 'Testing download speed...', delay: 2000 },
+        { width: '70%', text: 'Testing upload speed...', delay: 5000 },
+        { width: '90%', text: 'Finalizing results...', delay: 3000 },
+    ];
+
+    let phaseTimeout;
+    let currentPhase = 0;
+    function advancePhase() {
+        if (currentPhase < phases.length) {
+            const phase = phases[currentPhase];
+            progressFill.style.width = phase.width;
+            progressText.textContent = phase.text;
+            currentPhase++;
+            phaseTimeout = setTimeout(advancePhase, phase.delay);
+        }
+    }
+    advancePhase();
+
+    try {
+        const res = await fetch('/api/speedtest', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': CSRF_TOKEN }
+        });
+        const data = await res.json();
+
+        clearTimeout(phaseTimeout);
+        progressFill.style.width = '100%';
+        progressText.textContent = 'Complete!';
+
+        // Animate numbers in
+        if (data.ping_ms >= 0) {
+            animateValue('st-ping', data.ping_ms, 0);
+            document.querySelector('.speedtest-metric-icon.ping')?.closest('.speedtest-metric')?.classList.add('active');
+        } else {
+            updateEl('st-ping', 'ERR');
+        }
+
+        setTimeout(() => {
+            if (data.download_mbps >= 0) {
+                animateValue('st-download', data.download_mbps, 2);
+                document.querySelector('.speedtest-metric-icon.download')?.closest('.speedtest-metric')?.classList.add('active');
+            } else {
+                updateEl('st-download', 'ERR');
+            }
+        }, 300);
+
+        setTimeout(() => {
+            if (data.upload_mbps >= 0) {
+                animateValue('st-upload', data.upload_mbps, 2);
+                document.querySelector('.speedtest-metric-icon.upload')?.closest('.speedtest-metric')?.classList.add('active');
+            } else {
+                updateEl('st-upload', 'ERR');
+            }
+        }, 600);
+
+        // Update server display
+        if (data.server) {
+            const serverEl = document.getElementById('st-server');
+            if (serverEl) serverEl.innerHTML = `<i class="fa-solid fa-server"></i> Server: ${data.server}`;
+        }
+
+        // Hide progress after a delay
+        setTimeout(() => { progress.style.display = 'none'; }, 3000);
+
+    } catch (e) {
+        clearTimeout(phaseTimeout);
+        console.error('Speed test error:', e);
+        progressFill.style.width = '100%';
+        progressFill.style.background = 'var(--red)';
+        progressText.textContent = 'Error: ' + e.message;
+        setTimeout(() => {
+            progress.style.display = 'none';
+            progressFill.style.background = '';
+        }, 5000);
+    }
+
+    btn.disabled = false;
+    btn.classList.remove('running');
+    btn.innerHTML = '<i class="fa-solid fa-rocket"></i> Run Speed Test';
+    speedTestRunning = false;
+}
+
+function animateValue(elementId, target, decimals) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const duration = 800;
+    const start = performance.now();
+    const initial = 0;
+
+    function update(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease out cubic
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = initial + (target - initial) * eased;
+        el.textContent = current.toFixed(decimals);
+        if (progress < 1) requestAnimationFrame(update);
+    }
+    requestAnimationFrame(update);
+}
 
 // ─── Navigation ─────────────────────────────────────────────────────
 function initNavigation() {

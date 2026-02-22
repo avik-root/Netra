@@ -12,6 +12,8 @@ import time
 import re
 import socket
 import struct
+import urllib.request
+import urllib.error
 import hashlib
 import platform
 import subprocess
@@ -888,6 +890,81 @@ def api_update():
             "status": "error",
             "message": str(e)
         }), 500
+
+@app.route("/api/speedtest", methods=["POST"])
+@login_required
+def api_speedtest():
+    """Run a network speed test (download, upload, ping)."""
+    validate_csrf_token()
+    
+    results = {
+        "download_mbps": 0,
+        "upload_mbps": 0,
+        "ping_ms": 0,
+        "server": "Cloudflare (1.1.1.1)",
+        "status": "error",
+        "message": ""
+    }
+    
+    # ── Ping Test ──
+    try:
+        ping_times = []
+        for _ in range(4):
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(5)
+            start = time.time()
+            s.connect(("1.1.1.1", 443))
+            end = time.time()
+            s.close()
+            ping_times.append((end - start) * 1000)
+        results["ping_ms"] = round(sum(ping_times) / len(ping_times), 1)
+    except Exception as e:
+        print(f"[NETRA] Speedtest ping error: {e}")
+        results["ping_ms"] = -1
+    
+    # ── Download Test ──
+    # Fetch a ~10 MB payload from Cloudflare's speed test CDN
+    download_url = "https://speed.cloudflare.com/__down?bytes=50000000"
+    try:
+        req = urllib.request.Request(download_url, headers={"User-Agent": "NETRA-SpeedTest/1.0"})
+        start = time.time()
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read()
+        elapsed = time.time() - start
+        bits = len(data) * 8
+        results["download_mbps"] = round(bits / elapsed / 1_000_000, 2)
+    except Exception as e:
+        print(f"[NETRA] Speedtest download error: {e}")
+        results["download_mbps"] = -1
+    
+    # ── Upload Test ──
+    # POST ~2 MB of random data to Cloudflare's speed test endpoint
+    upload_url = "https://speed.cloudflare.com/__up"
+    try:
+        payload = os.urandom(2_000_000)
+        req = urllib.request.Request(
+            upload_url,
+            data=payload,
+            headers={
+                "User-Agent": "NETRA-SpeedTest/1.0",
+                "Content-Type": "application/octet-stream"
+            },
+            method="POST"
+        )
+        start = time.time()
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            resp.read()
+        elapsed = time.time() - start
+        bits = len(payload) * 8
+        results["upload_mbps"] = round(bits / elapsed / 1_000_000, 2)
+    except Exception as e:
+        print(f"[NETRA] Speedtest upload error: {e}")
+        results["upload_mbps"] = -1
+    
+    results["status"] = "success"
+    results["message"] = "Speed test completed"
+    print(f"[NETRA] Speedtest: ↓{results['download_mbps']} Mbps  ↑{results['upload_mbps']} Mbps  Ping {results['ping_ms']}ms")
+    return jsonify(results)
 
 @app.route("/api/info")
 @login_required

@@ -1120,4 +1120,188 @@ body {
     .search-input {
         width: 140px;
     }
+
+    .speedtest-metrics {
+        flex-direction: column;
+        gap: 20px;
+    }
+}
+
+/* ─── Speed Test ──────────────────────────────────────────── */
+.speedtest-card {
+    border: 1px solid rgba(0, 240, 255, 0.12);
+    background: linear-gradient(135deg, rgba(13, 18, 30, 0.9), rgba(10, 14, 23, 0.95));
+}
+
+.speedtest-content {
+    padding: 10px 0;
+}
+
+.speedtest-metrics {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 0;
+}
+
+.speedtest-metric {
+    text-align: center;
+    flex: 1;
+    max-width: 200px;
+}
+
+.speedtest-metric-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+    font-size: 1.3rem;
+    transition: var(--transition);
+}
+
+.speedtest-metric-icon.download {
+    background: rgba(0, 240, 255, 0.1);
+    color: var(--cyan);
+    border: 2px solid rgba(0, 240, 255, 0.2);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.08);
+}
+
+.speedtest-metric-icon.upload {
+    background: rgba(0, 255, 136, 0.1);
+    color: var(--green);
+    border: 2px solid rgba(0, 255, 136, 0.2);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.08);
+}
+
+.speedtest-metric-icon.ping {
+    background: rgba(255, 170, 0, 0.1);
+    color: var(--yellow);
+    border: 2px solid rgba(255, 170, 0, 0.2);
+    box-shadow: 0 0 20px rgba(255, 170, 0, 0.08);
+}
+
+.speedtest-metric-value {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+    transition: color 0.3s ease;
+}
+
+.speedtest-metric-unit {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+}
+
+.speedtest-metric-label {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 500;
+}
+
+.speedtest-btn {
+    padding: 10px 20px !important;
+    font-size: 0.78rem !important;
+    font-weight: 600;
+    gap: 8px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.speedtest-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.speedtest-btn.running {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.3);
+    color: var(--purple);
+    animation: btnPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes btnPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 20px 4px rgba(168, 85, 247, 0.15);
+    }
+}
+
+.speedtest-status {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.speedtest-server {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+}
+
+.speedtest-server i {
+    margin-right: 4px;
+    color: var(--cyan);
+}
+
+.speedtest-progress {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.speedtest-progress-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.speedtest-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--cyan), var(--green));
+    width: 0%;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+.speedtest-progress-text {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    min-width: 100px;
+}
+
+/* Active metric glow when value arrives */
+.speedtest-metric.active .speedtest-metric-icon.download {
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+    border-color: var(--cyan);
+}
+
+.speedtest-metric.active .speedtest-metric-icon.upload {
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+    border-color: var(--green);
+}
+
+.speedtest-metric.active .speedtest-metric-icon.ping {
+    box-shadow: 0 0 30px rgba(255, 170, 0, 0.3);
+    border-color: var(--yellow);
 }
