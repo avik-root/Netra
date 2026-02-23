@@ -877,10 +877,15 @@ def api_update():
                 f.write(content)
         
         if result.returncode == 0:
+            # Reload version from updated version.json
+            global APP_VERSION
+            APP_VERSION = get_app_version()
+            
             return jsonify({
                 "status": "success",
                 "message": "NETRA updated successfully! Admin data preserved.",
-                "output": result.stdout
+                "output": result.stdout,
+                "new_version": APP_VERSION
             })
         else:
             return jsonify({

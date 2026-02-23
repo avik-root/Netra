@@ -965,6 +965,22 @@ async function triggerUpdate() {
             log.textContent += data.message + '\n';
             if (data.output) log.textContent += data.output;
             log.style.color = '#00ff88';
+
+            // Update version displayed across the UI
+            if (data.new_version) {
+                // Sidebar version badge
+                const sidebarVersion = document.querySelector('.sidebar-brand span');
+                if (sidebarVersion) sidebarVersion.textContent = 'v' + data.new_version;
+
+                // Settings panel version info
+                document.querySelectorAll('.info-value').forEach(el => {
+                    if (el.previousElementSibling && el.previousElementSibling.textContent.trim() === 'Version') {
+                        el.textContent = data.new_version;
+                    }
+                });
+
+                log.textContent += '\nVersion updated to v' + data.new_version + '\n';
+            }
         } else {
             log.textContent += data.message + '\n';
             if (data.output) log.textContent += data.output;
