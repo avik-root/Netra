@@ -1164,7 +1164,7 @@ function updateClock() {
     const el = document.getElementById('clock');
     if (el) {
         const now = new Date();
-        el.textContent = now.toLocaleTimeString('en-US', { hour12: false });
+        el.textContent = now.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 }
 
