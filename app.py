@@ -35,7 +35,17 @@ from cryptography.fernet import Fernet
 
 # ─── Configuration ───────────────────────────────────────────────────────────
 
-APP_VERSION = "1.0.0"
+VERSION_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "version.json")
+
+def get_app_version():
+    """Load version from version.json file."""
+    try:
+        with open(VERSION_FILE, "r") as f:
+            return json.load(f).get("version", "0.0.0")
+    except (FileNotFoundError, json.JSONDecodeError):
+        return "0.0.0"
+
+APP_VERSION = get_app_version()
 DEVELOPER = "MintFire"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ADMIN_DATA_FILE = os.path.join(BASE_DIR, "admin_data.json")
@@ -179,7 +189,6 @@ def init_admin_data():
             "username": encrypt_value("netra"),
             "password": encrypt_value("pass0000"),
             "first_login": True,
-            "version": APP_VERSION,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         }
@@ -928,7 +937,7 @@ def api_speedtest():
     try:
         req = urllib.request.Request(download_url, headers={"User-Agent": "NETRA-SpeedTest/1.0"})
         start = time.time()
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=60) as resp:
             data = resp.read()
         elapsed = time.time() - start
         bits = len(data) * 8
@@ -938,28 +947,40 @@ def api_speedtest():
         results["download_mbps"] = -1
     
     # ── Upload Test ──
-    # POST ~2 MB of random data to Cloudflare's speed test endpoint
+    # POST multiple 2 MB chunks for ~15 seconds to measure sustained upload speed
     upload_url = "https://speed.cloudflare.com/__up"
     try:
-        payload = os.urandom(2_000_000)
-        req = urllib.request.Request(
-            upload_url,
-            data=payload,
-            headers={
-                "User-Agent": "NETRA-SpeedTest/1.0",
-                "Content-Type": "application/octet-stream"
-            },
-            method="POST"
-        )
+        chunk = os.urandom(2_000_000)  # 2 MB per request
+        total_bytes = 0
         start = time.time()
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            resp.read()
+        upload_duration = 15  # run upload test for 15 seconds
+        
+        while (time.time() - start) < upload_duration:
+            req = urllib.request.Request(
+                upload_url,
+                data=chunk,
+                headers={
+                    "User-Agent": "NETRA-SpeedTest/1.0",
+                    "Content-Type": "application/octet-stream"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                resp.read()
+            total_bytes += len(chunk)
+        
         elapsed = time.time() - start
-        bits = len(payload) * 8
+        bits = total_bytes * 8
         results["upload_mbps"] = round(bits / elapsed / 1_000_000, 2)
     except Exception as e:
         print(f"[NETRA] Speedtest upload error: {e}")
-        results["upload_mbps"] = -1
+        # If at least some data was uploaded, calculate partial result
+        elapsed = time.time() - start if 'start' in dir() else 0
+        if total_bytes > 0 and elapsed > 0:
+            bits = total_bytes * 8
+            results["upload_mbps"] = round(bits / elapsed / 1_000_000, 2)
+        else:
+            results["upload_mbps"] = -1
     
     results["status"] = "success"
     results["message"] = "Speed test completed"
